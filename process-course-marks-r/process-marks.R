@@ -1,32 +1,23 @@
 library("openxlsx")
 
 ## FUNCTIONS DEFINED HERE ======================================================
-
-#-------------------------------------------------------------------------------
 # function to do sum of columns (e.g. for assgns, class, etc.)
-#-------------------------------------------------------------------------------
 gs_col_sum <- function(df, cols, newColName) {
   newDf <- df
   newDf[newColName] <- rowSums(newDf[, cols], na.rm = TRUE)
   return(newDf)
 }
-#-------------------------------------------------------------------------------
 
-#-------------------------------------------------------------------------------
 # function to do weighted sum of columns (e.g. for assgns, class, etc.)
-#-------------------------------------------------------------------------------
 gs_col_wt_sum <- function(df, colName, wt, newColName) {
   newDf <- df
-  full_marks = newDf[ allData$RollNo == "99999999", colName]
+  #full_marks = newDf[ allData$RollNo == "99999999", colName]
+  full_marks <- df[nrow(df), colName]
   newDf[newColName] <- round(newDf[colName] * wt / full_marks, 2)
   return(newDf)
 }
 
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
 # function to send all marks by email
-#-------------------------------------------------------------------------------
 # uses gs-py-send (email sender written in python: see synology-drive/code/python)
 # symlink available in ~/code/bin [which is in $PATH]
 gs_send_all_marks <- function(df) {
@@ -59,9 +50,7 @@ gs_send_all_marks <- function(df) {
   }
 }
 
-#-------------------------------------------------------------------------------
 # function to calculate statistics on marks
-#-------------------------------------------------------------------------------
 gs_calculate_statistics <- function(df) {
   #marks start from 6th column (first 5 columns are student details)
   colNames <- names(df)
@@ -109,7 +98,20 @@ allData <- gs_col_sum(allData, cols_to_sum, "A.Total")
 assgn_weight <- all_weights[which(all_work == "Assignment")]
 allData <- gs_col_wt_sum(allData, "A.Total", assgn_weight, "W.A.Total")
 
-# ------- write new output excel file ------------------------------------------
-write.xlsx(allData, "outfile.xlsx", asTable = TRUE, overwrite = TRUE)
+# ------- process class work marks ---------------------------------------------
+cols_to_sum <- names(allData) %in% c("C1", "C2", "C3", "C4")
+allData <- gs_col_sum(allData, cols_to_sum, "C.Total")
 
-gs_send_all_marks(allData)
+assgn_weight <- all_weights[which(all_work == "Classwork")]
+allData <- gs_col_wt_sum(allData, "C.Total", assgn_weight, "W.C.Total")
+
+# ------- write marks to new excel file ----------------------------------------
+write.xlsx(allData, "outfile.xlsx", asTable = TRUE, overwrite = TRUE, 
+           sheetName = "All Marks")
+
+# ------- write statistics to same excel file ----------------------------------
+#write.xlsx(allStats, "outfile.xlsx", asTable = TRUE, overwrite = TRUE, 
+           #sheetName = "Marks Statistics")
+
+# ------- send all marks by email ----------------------------------------------
+#gs_send_all_marks(allData)
